@@ -34,9 +34,9 @@ type {{.Name}} struct {
 	{{- range .Fields }} 
 		{{- if .Type }}
 			{{- if eq $Method "GET" }}
-				{{ .Name }} {{ .Type }} ` + "`json:\"{{ .Name | camelToSnakeCase }}\"`" + `
-			{{- else }}
 				{{ .Name }} {{ .Type }} ` + "`form:\"{{ .Name | camelToSnakeCase }}\"`" + `
+			{{- else }}
+				{{ .Name }} {{ .Type }} ` + "`json:\"{{ .Name | camelToSnakeCase }}\"`" + `
 			{{- end }}
 		{{- else }}
 			{{ .Name }} 
@@ -61,6 +61,7 @@ func parseEntity(filepath string) (string, error) {
 	// 当前解析的消息和服务
 	var currentMessage *Message
 	var currentPackage string
+	var currentService *Service
 	var getMessages = map[string]bool{}
 
 	// 创建一个扫描器
@@ -87,8 +88,10 @@ func parseEntity(filepath string) (string, error) {
 				currentMessage.Fields = append(currentMessage.Fields, Field{Name: parts[0], Type: ""})
 			}
 		}
-		var currentService *Service
+
 		if strings.HasPrefix(line, "service") {
+			name := strings.TrimSuffix(strings.Fields(line)[1], " {")
+			currentService = &Service{Name: name}
 		} else if line == "}" && currentService != nil {
 			currentService = nil
 		} else if currentService != nil && strings.Contains(line, "(") && strings.Contains(line, ")") {
@@ -107,7 +110,7 @@ func parseEntity(filepath string) (string, error) {
 		return "", err
 	}
 	for idx, message := range messages {
-		if getMessages[message.Name] {
+		if getMessages[strings.TrimSpace(message.Name)] {
 			message.Method = "GET"
 			messages[idx] = message
 		}

@@ -47,7 +47,11 @@ func (h *{{ $serviceName }}Handler) {{ .Name }}(c *gin.Context) () {
 	ctx := context.FromGin(c)
 	log := log.New(ctx)
 	req := &entity.{{ .Request }}{}
-	if err := c.Bind(req);err != nil{
+	{{- if eq (toLower .Method) "get" }}
+		if err := c.ShouldBindQuery(req);err != nil{
+	{{- else }}
+		if err := c.Bind(req);err != nil{
+	{{- end }}
 		c.Status(http.StatusBadRequest)
 		log.Errorf("%v.%v params error:%v", "{{ $serviceName }}Handler", "{{ .Name }}", err)
 		return 	
@@ -118,7 +122,6 @@ func parseHandler(filepath string) (string, error) {
 	if err := scanner.Err(); err != nil {
 		return "", err
 	}
-
 	// 准备模板数据
 	data := struct {
 		Package  string
@@ -131,7 +134,7 @@ func parseHandler(filepath string) (string, error) {
 	}
 
 	// 创建模板并解析
-	tmpl := template.Must(template.New("code").Funcs(template.FuncMap{"lowerFirst": lowerFirst, "camelToSnakeCase": camelToSnakeCase, "camelToSplitCase": camelToSplitCase}).Parse(handlerTemplate))
+	tmpl := template.Must(template.New("code").Funcs(template.FuncMap{"toLower": lower, "lowerFirst": lowerFirst, "camelToSnakeCase": camelToSnakeCase, "camelToSplitCase": camelToSplitCase}).Parse(handlerTemplate))
 
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, data); err != nil {

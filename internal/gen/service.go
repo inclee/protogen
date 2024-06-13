@@ -136,7 +136,7 @@ func parseService(filepath string) (string, error) {
 	}
 
 	// 创建模板并解析
-	tmpl := template.Must(template.New("code").Funcs(template.FuncMap{"lowerFirst": lowerFirst, "camelToSnakeCase": camelToSnakeCase}).Parse(codeTemplate))
+	tmpl := template.Must(template.New("code").Funcs(template.FuncMap{"lower": lower, "lowerFirst": lowerFirst, "camelToSnakeCase": camelToSnakeCase}).Parse(codeTemplate))
 
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, data); err != nil {
@@ -153,6 +153,10 @@ func lowerFirst(s string) string {
 		return ""
 	}
 	return strings.ToLower(s[:1]) + s[1:]
+}
+
+func lower(s string) string {
+	return strings.ToLower(s)
 }
 
 // camelToSnakeCase 将驼峰命名转换为下划线命名
