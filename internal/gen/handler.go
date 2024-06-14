@@ -15,8 +15,8 @@ package handler
 /*GENERATE BY protogen(https://github.com/inclee/protogen); PLEASE DON'T EDIT IT */
 
 import (
-	"github.com/gin-gonic/gin"
 	"net/http"
+	"github.com/gin-gonic/gin"
 	"{{ .Module }}/internal/service"
 	"{{ .Module }}/internal/entity"
 	"{{ .Module }}/pkg/context"
@@ -35,13 +35,11 @@ func New{{ .Name }}Handler(srv service.I{{ .Name }}Service) *{{ .Name }}Handler{
 	}
 }
 
-func (h *{{ .Name }}Handler) Register(engine *gin.Engine) {
-	group := engine.Group("{{ .Name | camelToSnakeCase }}")
+func (h *{{ .Name }}Handler) Register(group *gin.RouterGroup) {
 	{{- range .Handlers }}
 		group.{{ .Method }}("{{ .Name | camelToSplitCase }}", h.{{ .Name }})	
 	{{- end }}		
 }
-
 {{- range .Handlers }}
 func (h *{{ $serviceName }}Handler) {{ .Name }}(c *gin.Context) () {
 	ctx := context.FromGin(c)
@@ -55,6 +53,11 @@ func (h *{{ $serviceName }}Handler) {{ .Name }}(c *gin.Context) () {
 		c.Status(http.StatusBadRequest)
 		log.Errorf("%v.%v params error:%v", "{{ $serviceName }}Handler", "{{ .Name }}", err)
 		return 	
+	}
+	if err := validate.Struct(req); err != nil {
+		c.Status(http.StatusBadRequest)
+		log.Errorf("%v.%v params error:%v", "{{ $serviceName }}Handler", "{{ .Name }}", err)
+		return
 	}
 	rsp ,err := h.srv.{{ .Name }}(ctx,req)
 	if err != nil{

@@ -85,6 +85,9 @@ func Gen(protoDir, codeDir string) error {
 		return err
 	}
 	logger := log.New(os.Stdout, "", log.Ldate|log.Ltime)
+	if err := writeValide(codeDir); err != nil {
+		return err
+	}
 	// 读取并打印每个文件的内容
 	for _, file := range files {
 		logger.Printf("read proto file %s", file)

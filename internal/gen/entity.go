@@ -6,12 +6,15 @@ import (
 	"os"
 	"strings"
 	"text/template"
+
+	"github.com/inclee/protogen/internal/utool/containers/slice"
 )
 
 // 定义字段结构体
 type Field struct {
-	Name string
-	Type string
+	Name     string
+	Type     string
+	Validate string
 }
 
 // 定义消息结构体
@@ -32,11 +35,15 @@ package entity
 {{- $Method := .Method }}
 type {{.Name}} struct {
 	{{- range .Fields }} 
+		{{- $Validate := "" }}
+		{{- if .Validate }}
+			{{- $Validate = printf "validate:\"%s\"" .Validate }}
+		{{- end }}
 		{{- if .Type }}
 			{{- if eq $Method "GET" }}
-				{{ .Name }} {{ .Type }} ` + "`form:\"{{ .Name | camelToSnakeCase }}\"`" + `
+				{{ .Name }} {{ .Type }} ` + "`form:\"{{ .Name | camelToSnakeCase }}\" {{ $Validate }} `" + `
 			{{- else }}
-				{{ .Name }} {{ .Type }} ` + "`json:\"{{ .Name | camelToSnakeCase }}\"`" + `
+				{{ .Name }} {{ .Type }} ` + "`json:\"{{ .Name | camelToSnakeCase }}\" {{ $Validate }} `" + `
 			{{- end }}
 		{{- else }}
 			{{ .Name }} 
@@ -83,7 +90,7 @@ func parseEntity(filepath string) (string, error) {
 		} else if currentMessage != nil {
 			parts := strings.Fields(line)
 			if len(parts) > 1 {
-				currentMessage.Fields = append(currentMessage.Fields, Field{Name: parts[0], Type: parts[1]})
+				currentMessage.Fields = append(currentMessage.Fields, Field{Name: parts[0], Type: parts[1], Validate: slice.Get(parts, 2, "")})
 			} else {
 				currentMessage.Fields = append(currentMessage.Fields, Field{Name: parts[0], Type: ""})
 			}
