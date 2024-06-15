@@ -1,4 +1,4 @@
-package gen
+package gen_go
 
 import "path/filepath"
 

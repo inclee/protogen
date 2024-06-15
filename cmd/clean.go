@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	gen "github.com/inclee/protogen/internal/gen"
+	"github.com/inclee/protogen/internal/gen_go"
 	"github.com/spf13/cobra"
 )
 
@@ -10,7 +10,7 @@ var cleanCmd = &cobra.Command{
 	Short: "remove all generated code files",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := gen.Clean(protoPath, codePath); err != nil {
+		if err := gen_go.Clean(protoPath, codePath); err != nil {
 			panic(err)
 		}
 	},

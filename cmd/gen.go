@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	gen "github.com/inclee/protogen/internal/gen"
+	"github.com/inclee/protogen/internal/gen_go"
 	"github.com/spf13/cobra"
 )
 
@@ -12,7 +12,7 @@ var genCmd = &cobra.Command{
 	Short: "generate code files based on the protocol file",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := gen.Gen(protoPath, codePath); err != nil {
+		if err := gen_go.Gen(protoPath, codePath); err != nil {
 			panic(err)
 		}
 	},

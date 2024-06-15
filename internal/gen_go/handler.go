@@ -1,11 +1,14 @@
-package gen
+package gen_go
 
 import (
-	"bufio"
 	"bytes"
-	"os"
-	"strings"
 	"text/template"
+
+	"github.com/inclee/gokit/container/maps"
+	"github.com/inclee/protogen/internal/entity"
+	"github.com/inclee/protogen/internal/errors"
+	"github.com/inclee/protogen/internal/parse"
+	"github.com/inclee/protogen/internal/utool"
 )
 
 // 生成代码的模板
@@ -19,7 +22,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"{{ .Module }}/internal/service"
 	"{{ .Module }}/internal/entity"
-	"{{ .Module }}/pkg/context"
+	"{{ .Module }}/pkg/contexthelper"
 	"{{ .Module }}/pkg/log"
 )
 {{range .Services}}
@@ -42,7 +45,7 @@ func (h *{{ .Name }}Handler) Register(group *gin.RouterGroup) {
 }
 {{- range .Handlers }}
 func (h *{{ $serviceName }}Handler) {{ .Name }}(c *gin.Context) () {
-	ctx := context.FromGin(c)
+	ctx := contexthelper.FromGin(c)
 	log := log.New(ctx)
 	req := &entity.{{ .Request }}{}
 	{{- if eq (toLower .Method) "get" }}
@@ -71,73 +74,30 @@ func (h *{{ $serviceName }}Handler) {{ .Name }}(c *gin.Context) () {
 {{end}}
 `
 
-func parseHandler(filepath string) (string, error) {
-	// 打开协议文件
-	file, err := os.Open(filepath)
+func genHandler(workdir, filepath string) (string, error) {
+	compnent, err := parse.Parsefile(workdir, filepath)
 	if err != nil {
 		return "", err
 	}
-	defer file.Close()
-
-	// 创建消息和服务列表
-	var services []Service
-
-	// 当前解析的消息和服务
-	var currentService *Service
-	var currentModule string
-	var currentPackage string
-
-	// 创建一个扫描器
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-
-		// 忽略空行和注释行
-		if len(line) == 0 || strings.HasPrefix(line, "//") {
-			continue
-		}
-		if strings.HasPrefix(line, "package") {
-			currentPackage = strings.Fields(line)[1]
-			continue
-		}
-		if strings.HasPrefix(line, "module") {
-			currentModule = strings.Fields(line)[1]
-			continue
-		}
-		// 解析服务定义
-		if strings.HasPrefix(line, "service") {
-			name := strings.TrimSuffix(strings.Fields(line)[1], " {")
-			currentService = &Service{Name: name}
-		} else if line == "}" && currentService != nil {
-			services = append(services, *currentService)
-			currentService = nil
-		} else if currentService != nil && strings.Contains(line, "(") && strings.Contains(line, ")") {
-			parts := strings.Fields(line)
-			method := parts[0]
-			handlerName := parts[1]
-			request := strings.Trim(parts[2], "()")
-			response := strings.Trim(parts[3], "()")
-			currentService.Handlers = append(currentService.Handlers, HandlerFunc{Method: method, Name: handlerName, Request: request, Response: response})
-		}
+	if len(compnent.Services) == 0 {
+		return "", errors.ErrNotNeedGen
 	}
-
-	// 检查是否有扫描错误
-	if err := scanner.Err(); err != nil {
-		return "", err
-	}
+	//
 	// 准备模板数据
 	data := struct {
 		Package  string
 		Module   string
-		Services []Service
+		Messages []*entity.Message
+		Services []*entity.Service
 	}{
-		Package:  currentPackage,
-		Module:   currentModule,
-		Services: services,
+		Package:  "",
+		Module:   compnent.Module,
+		Messages: maps.ValuesWith(compnent.Messages, func(msg *entity.Message) string { return msg.Name }, true),
+		Services: maps.ValuesWith(compnent.Services, func(msg *entity.Service) string { return msg.Name }, true),
 	}
 
 	// 创建模板并解析
-	tmpl := template.Must(template.New("code").Funcs(template.FuncMap{"toLower": lower, "lowerFirst": lowerFirst, "camelToSnakeCase": camelToSnakeCase, "camelToSplitCase": camelToSplitCase}).Parse(handlerTemplate))
+	tmpl := template.Must(template.New("code").Funcs(template.FuncMap{"toLower": utool.Lower, "lowerFirst": utool.LowerFirst, "camelToSnakeCase": utool.CamelToSnakeCase, "camelToSplitCase": utool.CamelToSplitCase}).Parse(handlerTemplate))
 
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, data); err != nil {
